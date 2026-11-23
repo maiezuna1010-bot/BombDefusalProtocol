@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bomb Defusal Protocol - เกมกู้ระเบิดอสมการ ม.3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-cyan: #06b6d4;
+            --neon-red: #ef4444;
+            --neon-amber: #f59e0b;
+            --neon-green: #10b981;
+            --bg-dark: #070b14;
+        }
+
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: var(--bg-dark);
+            color: #f3f4f6;
+            background-image: 
+                radial-gradient(circle at 50% 35%, rgba(239, 68, 68, 0.08), transparent 45%),
+                radial-gradient(circle at 15% 80%, rgba(6, 182, 212, 0.07), transparent 35%),
+                linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 28px 28px, 28px 28px;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .font-mono-tech {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Realistic C4 / Time Bomb Assembly */
+        .bomb-rig {
+            background: linear-gradient(160deg, #161e2e 0%, #0b101b 100%);
+            border: 2px solid #2a374d;
+            box-shadow: 
+                0 30px 60px -15px rgba(0, 0, 0, 0.9),
+                inset 0 1px 1px rgba(255, 255, 255, 0.12);
+            position: relative;
+        }
+
+        /* C4 Explosive Cylinder Sticks */
+        .c4-stick {
+            background: linear-gradient(180deg, #4b5563 0%, #374151 22%, #1f2937 78%, #111827 100%);
+            border: 1px solid #6b7280;
+            box-shadow: inset 0 3px 6px rgba(255, 255, 255, 0.2), 0 8px 16px rgba(0, 0, 0, 0.65);
+            position: relative;
+        }
+        .c4-stick::before {
+            content: 'C-4 EXPLOSIVE // COMP-B';
+            position: absolute;
+            top: 50%;
+            left: 16px;
+            transform: translateY(-50%);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            letter-spacing: 0.15em;
+            color: rgba(255, 255, 255, 0.22);
+            font-weight: 700;
+            pointer-events: none;
+        }
+
+        /* Steel Straps wrapping C4 */
+        .steel-strap {
+            background: linear-gradient(90deg, #334155, #94a3b8 35%, #cbd5e1 50%, #64748b 70%, #1e293b);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.8);
+            border-left: 1px solid #0f172a;
+            border-right: 1px solid #0f172a;
+        }
+
+        /* Hazard Stripes */
+        .hazard-bar {
+            background: repeating-linear-gradient(
+                -45deg,
+                #eab308,
+                #eab308 10px,
+                #18181b 10px,
+                #18181b 20px
+            );
+        }
+
+        /* Digital LED Screen */
+        .led-screen {
+            background: #04070d;
+            border: 3px solid #1e293b;
+            box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.98), 0 4px 12px rgba(0, 0, 0, 0.6);
+            position: relative;
+            overflow: hidden;
+        }
+        .led-screen::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.32) 50%);
+            background-size: 100% 3px;
+            pointer-events: none;
+        }
+
+        .glow-red {
+            text-shadow: 0 0 12px rgba(239, 68, 68, 0.9), 0 0 26px rgba(239, 68, 68, 0.5);
+        }
+        .glow-cyan {
+            text-shadow: 0 0 12px rgba(6, 182, 212, 0.85), 0 0 24px rgba(6, 182, 212, 0.45);
+        }
+        .glow-emerald {
+            text-shadow: 0 0 12px rgba(16, 185, 129, 0.9), 0 0 24px rgba(16, 185, 129, 0.5);
+        }
+
+        /* Interactive SVG Wire Cursor & Hover */
+        .svg-wire-group {
+            cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%23fbbf24' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><circle cx='6' cy='6' r='3'/><circle cx='6' cy='18' r='3'/><line x1='20' y1='4' x2='8.12' y2='15.88'/><line x1='14.47' y1='14.48' x2='20' y2='20'/><line x1='8.12' y1='8.12' x2='12' y2='12'/></svg>") 14 14, pointer;
+            transition: filter 0.15s ease;
+        }
+        .svg-wire-group:hover {
+            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.45));
+        }
+
+        /* Spark burst animation when wire is cut */
+        @keyframes sparkBurst {
+            0% { opacity: 1; transform: scale(0.3) rotate(0deg); }
+            50% { opacity: 1; transform: scale(1.3) rotate(25deg); }
+            100% { opacity: 0; transform: scale(1.7) rotate(45deg); }
+        }
+        .spark-burst {
+            transform-origin: center;
+            transform-box: fill-box;
+            animation: sparkBurst 0.45s ease-out forwards;
+        }
+
+        /* Blinking Beacon LED */
+        @keyframes beaconFlash {
+            0%, 100% { opacity: 1; box-shadow: 0 0 16px 4px rgba(239, 68, 68, 0.9); }
+            50% { opacity: 0.25; box-shadow: 0 0 2px 0 rgba(239, 68, 68, 0.2); }
+        }
+        .beacon-active {
+            animation: beaconFlash var(--beacon-speed, 1s) infinite;
+        }
+
+        /* Shake & Explosion Flash */
+        @keyframes bombExplodeShake {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            10% { transform: translate(-10px, -8px) rotate(-1.5deg); }
+            20% { transform: translate(10px, 6px) rotate(1.5deg); }
+            30% { transform: translate(-8px, 8px) rotate(-1deg); }
+            40% { transform: translate(8px, -6px) rotate(1deg); }
+            50% { transform: translate(-6px, 4px) rotate(-0.5deg); }
+            60% { transform: translate(6px, -4px) rotate(0.5deg); }
+            75% { transform: translate(-3px, 2px) rotate(0deg); }
+        }
+        .explode-shake {
+            animation: bombExplodeShake 0.6s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes flashOverlay {
+            0% { opacity: 0.95; }
+            100% { opacity: 0; }
+        }
+        .explosion-flash {
+            animation: flashOverlay 0.8s ease-out forwards;
+        }
+
+        /* Safety Flip Cover on Defuse Switch */
+        .safety-cover {
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-origin: top center;
+        }
+        .defuse-wrapper:hover .safety-cover {
+            transform: rotateX(75deg) translateY(-6px);
+            opacity: 0.35;
+        }
+    </style>
+</head>
+<body class="p-2.5 sm:p-5 flex flex-col items-center justify-start">
+
+    <!-- Explosion White/Orange Screen Flash -->
+    <div id="explosion-screen" class="fixed inset-0 bg-gradient-to-br from-amber-300 via-orange-500 to-red-700 z-50 pointer-events-none hidden"></div>
+
+    <!-- Top Control Bar -->
+    <header class="w-full max-w-5xl flex flex-wrap items-center justify-between gap-2.5 mb-4 bg-slate-900/90 border border-slate-700/80 rounded-2xl px-4 py-2.5 shadow-xl backdrop-blur-md">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400 shadow-inner">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-base sm:text-lg font-bold tracking-wide text-white flex items-center gap-2">
+                    BOMB DEFUSAL PROTOCOL
+                    <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">อสมการ ม.3</span>
+                </h1>
+                <p class="text-xs text-slate-400">ตัดสายไฟที่มีค่า x ทำให้อสมการบนตัวระเบิดเป็นจริง</p>
+            </div>
+        </div>
+
+        <!-- Difficulty Levels + Randomize + Sound -->
+        <div class="flex items-center gap-2 flex-wrap">
+            <!-- 10-Stage Progress Pill -->
+            <div class="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
+                <span class="text-xs text-slate-400">ภารกิจ:</span>
+                <span id="stage-counter-pill" class="font-mono-tech text-xs sm:text-sm font-bold text-cyan-400">ข้อที่ 1 / 10</span>
+            </div>
+
+            <button onclick="restartTenStageCampaign()" title="เริ่มภารกิจ 10 ข้อใหม่ตั้งแต่ข้อแรก" class="px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-semibold transition flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>เริ่มภารกิจใหม่</span>
+            </button>
+
+            <button onclick="toggleSound()" id="sound-btn" title="เปิด/ปิดเสียง" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-400 transition">
+                <svg id="icon-sound-on" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+                <svg id="icon-sound-off" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 hidden text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- 10-STAGE PROGRESS TRACKER BAR -->
+    <div class="w-full max-w-5xl mb-3 bg-slate-900/80 border border-slate-800 rounded-2xl px-4 py-2.5 shadow">
+        <div class="flex items-center justify-between text-xs mb-1.5">
+            <span id="stage-tier-title" class="font-semibold text-cyan-300">ระดับที่ 1: อสมการขั้นตอนเดียว (Warm-up)</span>
+            <span id="stage-progress-text" class="font-mono-tech text-slate-400">ความคืบหน้า 0 / 10</span>
+        </div>
+        <div id="stage-dots-bar" class="grid grid-cols-10 gap-1.5">
+            <!-- Rendered 10 stage segments via JS -->
+        </div>
+    </div>
+
+    <!-- MAIN CENTERPIECE: REALISTIC TIME BOMB RIG -->
+    <main id="bomb-rig" class="w-full max-w-5xl bomb-rig rounded-3xl overflow-hidden mb-4">
+        <!-- Top Hazard Warning Strip -->
+        <div class="h-2.5 w-full hazard-bar opacity-80"></div>
+
+        <div class="p-4 sm:p-6">
+            <!-- Status Telemetry Bar -->
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-800">
+                <div class="flex items-center gap-3">
+                    <!-- Blinking Red Beacon LED -->
+                    <div id="beacon-led" class="w-4 h-4 rounded-full bg-red-500 beacon-active border border-red-200"></div>
+                    <span id="bomb-status-text" class="font-mono-tech text-xs sm:text-sm font-bold tracking-wider text-red-400">
+                        ARMED // ระบบจุดระเบิดกำลังทำงาน
+                    </span>
+                </div>
+                <div class="flex items-center gap-4 text-xs sm:text-sm">
+                    <span class="text-slate-400">ด่าน: <strong id="level-badge" class="text-cyan-400">ระดับ 1</strong></span>
+                    <span class="text-slate-400">คะแนน: <strong id="score-display" class="font-mono-tech text-amber-400 text-base">0</strong></span>
+                </div>
+            </div>
+
+            <!-- CORE TIME BOMB VISUAL: Left (C4 + Timer + Inequality) & Right (5 Curved Interactive Wires) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+                
+                <!-- LEFT 6 COLS: C4 Explosive Bundle + Digital Countdown + Decoder Screen -->
+                <div class="lg:col-span-6 flex flex-col justify-between relative">
+                    <!-- C4 Cylinders Background Layer -->
+                    <div class="relative bg-slate-950/90 border-2 border-slate-800 rounded-2xl p-4 sm:p-5 shadow-inner flex flex-col gap-4">
+                        
+                        <!-- 3 Stacked C4 Explosive Sticks with Metal Straps -->
+                        <div class="space-y-2 relative py-1">
+                            <div class="c4-stick h-9 rounded-lg"></div>
+                            <div class="c4-stick h-9 rounded-lg"></div>
+                            <div class="c4-stick h-9 rounded-lg"></div>
+                            <!-- Vertical Steel Straps -->
+                            <div class="steel-strap absolute top-0 bottom-0 left-8 w-4 rounded-sm"></div>
+                            <div class="steel-strap absolute top-0 bottom-0 right-8 w-4 rounded-sm"></div>
+                        </div>
+
+                        <!-- Mounted Digital Detonator Module (Countdown Clock) -->
+                        <div class="led-screen rounded-2xl p-3.5 sm:p-4 border-red-950/80 relative z-10 -mt-2">
+                            <div class="flex items-center justify-between text-[11px] font-mono-tech text-slate-400 mb-1">
+                                <span>DETONATION TIMER</span>
+                                <span id="speed-indicator" class="text-red-400">1.0x SPEED</span>
+                            </div>
+                            <div class="flex items-baseline justify-center gap-1 my-1">
+                                <span id="timer-main" class="font-mono-tech text-4xl sm:text-5xl font-extrabold text-red-500 glow-red tracking-wider">01:30</span>
+                                <span id="timer-ms" class="font-mono-tech text-xl sm:text-2xl font-bold text-red-400/90">.00</span>
+                            </div>
+                        </div>
+
+                        <!-- Mounted Inequality Decoder Screen -->
+                        <div class="led-screen rounded-2xl p-4 border-cyan-900/70 relative z-10">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-xs font-semibold text-cyan-400 flex items-center gap-1.5">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                    </svg>
+                                    เงื่อนไขอสมการปลดชนวน
+                                </span>
+                                <span id="cut-summary" class="text-xs font-mono-tech text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">
+                                    ตัดแล้ว 0 เส้น
+                                </span>
+                            </div>
+
+                            <div class="bg-slate-900/90 border border-cyan-500/30 rounded-xl py-3 px-4 text-center my-1.5">
+                                <div id="inequality-display" class="font-mono-tech text-3xl sm:text-4xl font-extrabold text-cyan-300 glow-cyan tracking-wide">
+                                    x + 4 ≤ 7
+                                </div>
+                            </div>
+
+                            <p class="text-xs text-slate-300 text-center mt-2">
+                                คลิกตัดสายไฟด้านขวาเฉพาะเส้นที่มีค่า <strong class="font-mono-tech text-cyan-300">x</strong> ทำให้อสมการเป็นจริง
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT 6 COLS: 5 CURVED INTERACTIVE WIRES CONNECTED TO BOMB -->
+                <div class="lg:col-span-6 bg-slate-950/95 border-2 border-slate-800 rounded-2xl p-3 sm:p-4 flex flex-col justify-between relative overflow-hidden">
+                    <div class="flex items-center justify-between mb-1 px-1">
+                        <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                            สายไฟวงจรจุดระเบิด (นำเมาส์ชี้เพื่อใช้คีมตัด)
+                        </span>
+                        <span class="text-[11px] text-slate-400">คลิกซ้ำเพื่อต่อกลับ</span>
+                    </div>
+
+                    <!-- SVG Canvas for Realistic Curved Wires, Connectors, Tags, and Sparks -->
+                    <div class="w-full flex-1 flex items-center justify-center my-1">
+                        <svg id="wires-svg" viewBox="0 0 500 340" class="w-full h-auto max-h-[340px] select-none overflow-visible">
+                            <defs>
+                                <!-- Glow filters -->
+                                <filter id="wireShadow" x="-10%" y="-10%" width="120%" height="120%">
+                                    <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.75"/>
+                                </filter>
+                            </defs>
+
+                            <!-- Left Terminal Block (Connected to Bomb Body) -->
+                            <rect x="6" y="16" width="38" height="308" rx="8" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+                            <text x="25" y="170" fill="#94a3b8" font-size="10" font-family="JetBrains Mono" font-weight="bold" text-anchor="middle" transform="rotate(-90 25 170)" letter-spacing="2">DETONATOR BUS</text>
+
+                            <!-- Right Circuit Board Block -->
+                            <rect x="456" y="16" width="38" height="308" rx="8" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+                            <text x="475" y="170" fill="#94a3b8" font-size="10" font-family="JetBrains Mono" font-weight="bold" text-anchor="middle" transform="rotate(90 475 170)" letter-spacing="2">CIRCUIT BOARD</text>
+
+                            <!-- Dynamic Wires Group injected via JS -->
+                            <g id="dynamic-wires-layer"></g>
+                        </svg>
+                    </div>
+
+                    <!-- Primary Action: DEFUSE SWITCH WITH SAFETY COVER -->
+                    <div class="pt-2 border-t border-slate-800/90 flex items-center gap-3">
+                        <button onclick="resetCurrentBomb()" class="px-3.5 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-medium border border-slate-700 transition shrink-0">
+                            ต่อสายใหม่ทั้งหมด
+                        </button>
+
+                        <div class="defuse-wrapper relative flex-1">
+                            <!-- Translucent Flip Safety Cover -->
+                            <div class="safety-cover pointer-events-none absolute inset-0 rounded-xl border-2 border-amber-400/60 bg-amber-500/10 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                                <span class="text-[10px] font-mono-tech font-bold tracking-widest text-amber-300/90 bg-slate-950/80 px-2 py-0.5 rounded uppercase">
+                                    ชี้เพื่อเปิดฝาครอบนิรภัย
+                                </span>
+                            </div>
+                            <button onclick="verifyDefusal()" id="defuse-btn" class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-sm sm:text-base tracking-wide shadow-lg shadow-emerald-950 border border-emerald-300/50 transition transform active:scale-95 flex items-center justify-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                กดปุ่มกู้ระเบิด (DEFUSE)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Hazard Warning Strip -->
+        <div class="h-2 w-full hazard-bar opacity-80"></div>
+    </main>
+
+    <!-- COLLAPSIBLE HELPER TOOLS (Number Line + Scratchpad + Hint) -->
+    <section class="w-full max-w-5xl bg-slate-900/90 border border-slate-800 rounded-2xl shadow-lg overflow-hidden">
+        <!-- Accordion Header -->
+        <button onclick="toggleHelperDrawer()" class="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-slate-800/50 transition">
+            <div class="flex items-center gap-2.5">
+                <span class="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                </span>
+                <div>
+                    <span class="text-sm font-semibold text-white">เครื่องมือช่วยถอดรหัส (เส้นจำนวนจำลอง & กระดานทดเลข)</span>
+                    <span class="hidden sm:inline text-xs text-slate-400 ml-2">— พับเก็บได้เพื่อไม่ให้บดบังตัวระเบิด</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-cyan-400 font-medium">
+                <span id="drawer-toggle-text">ซ่อนเครื่องมือ</span>
+                <svg id="drawer-chevron" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 transition-transform duration-200 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+            </div>
+        </button>
+
+        <!-- Collapsible Body -->
+        <div id="helper-drawer-body" class="px-4 pb-4 pt-1 border-t border-slate-800/80 space-y-4">
+            <!-- Number Line Visualizer -->
+            <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-3">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <span class="text-xs font-semibold text-cyan-300">เส้นจำนวนแสดงค่า x ของสายไฟ (จุดสีแดง = สายไฟที่ถูกตัด)</span>
+                    <div class="flex items-center gap-3 text-[11px] text-slate-400">
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> ตัดแล้ว</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full border-2 border-cyan-400 inline-block"></span> ตัวเลือกสายไฟ</span>
+                    </div>
+                </div>
+                <div class="overflow-x-auto pb-1">
+                    <div id="number-line-container" class="min-w-[560px] h-12 relative flex items-center justify-between px-4">
+                        <!-- Rendered via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scratchpad & Concept Hint -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-3">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-xs font-semibold text-slate-300">กระดานทดเลข (Scratchpad)</span>
+                        <button onclick="document.getElementById('scratchpad').value=''" class="text-[11px] text-slate-400 hover:text-white underline">ล้างข้อความ</button>
+                    </div>
+                    <textarea id="scratchpad" rows="2" placeholder="ทดวิธีคิดที่นี่ เช่น -2x + 3 < 9  =>  -2x < 6  =>  x > -3" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs sm:text-sm font-mono-tech text-cyan-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500 resize-none"></textarea>
+                </div>
+
+                <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-3 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-xs font-semibold text-slate-300">คำใบ้แนวคิด (ไม่หักคะแนน)</span>
+                        <button onclick="showHint()" class="text-xs px-2.5 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 transition">
+                            ดูคำใบ้
+                        </button>
+                    </div>
+                    <div id="hint-box" class="text-xs text-slate-400 bg-slate-900/90 border border-slate-800 rounded-lg p-2 min-h-[48px] flex items-center">
+                        กดปุ่ม "ดูคำใบ้" หากต้องการคำแนะนำขั้นตอนการแก้อสมการ
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- DIAGNOSTIC FEEDBACK & SOLUTION MODAL -->
+    <div id="result-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div id="modal-card" class="w-full max-w-lg rounded-3xl bg-slate-900 border-2 p-5 sm:p-6 shadow-2xl">
+            <div class="flex items-center gap-3 mb-4">
+                <div id="modal-icon" class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"></div>
+                <div>
+                    <span id="modal-tag" class="text-xs font-mono-tech font-bold uppercase tracking-wider">STATUS</span>
+                    <h3 id="modal-title" class="text-xl font-bold text-white">ผลการปฏิบัติภารกิจ</h3>
+                </div>
+            </div>
+
+            <!-- Specific Math Error Analysis -->
+            <div id="modal-diagnostic" class="rounded-2xl p-4 mb-4 text-sm leading-relaxed border"></div>
+
+            <!-- Step-by-Step Solution -->
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 mb-5">
+                <div class="text-xs font-semibold text-cyan-400 uppercase tracking-wider mb-2">วิธีคิดและเฉลยทีละขั้นตอน:</div>
+                <div id="modal-steps" class="font-mono-tech text-xs sm:text-sm text-slate-300 space-y-1.5"></div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-end gap-2.5">
+                <button onclick="proceedToNextStage()" id="modal-next-btn" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold shadow-lg shadow-cyan-950 transition flex items-center justify-center gap-1.5">
+                    <span id="modal-next-label">ไปยังข้อถัดไป (ข้อที่ 2/10)</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FINAL 10-STAGE MISSION SUMMARY MODAL -->
+    <div id="summary-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+        <div class="w-full max-w-2xl rounded-3xl bg-slate-900 border-2 border-cyan-500/60 p-5 sm:p-7 shadow-2xl my-auto">
+            <div class="text-center mb-5">
+                <span class="inline-block text-xs font-mono-tech font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 mb-2">
+                    MISSION DEBRIEF // สรุปผลการปฏิบัติภารกิจ
+                </span>
+                <h2 id="summary-rank-title" class="text-2xl sm:text-3xl font-extrabold text-white">ยอดเยี่ยม! ผู้เชี่ยวชาญกู้ระเบิดระดับหัวกะทิ</h2>
+                <p id="summary-rank-subtitle" class="text-xs sm:text-sm text-slate-400 mt-1">สรุปผลการแก้อสมการเชิงเส้นตัวแปรเดียวครบทั้ง 10 ข้อ</p>
+            </div>
+
+            <!-- Score & Stats Cards -->
+            <div class="grid grid-cols-3 gap-2.5 sm:gap-4 mb-5">
+                <div class="bg-slate-950 border border-amber-500/40 rounded-2xl p-3 text-center">
+                    <div class="text-[11px] sm:text-xs text-slate-400">คะแนนรวมทั้งหมด</div>
+                    <div id="summary-total-score" class="font-mono-tech text-2xl sm:text-3xl font-extrabold text-amber-400 mt-0.5">0</div>
+                </div>
+                <div class="bg-slate-950 border border-emerald-500/40 rounded-2xl p-3 text-center">
+                    <div class="text-[11px] sm:text-xs text-slate-400">กู้ระเบิดสำเร็จ</div>
+                    <div id="summary-defused-count" class="font-mono-tech text-2xl sm:text-3xl font-extrabold text-emerald-400 mt-0.5">0 / 10</div>
+                </div>
+                <div class="bg-slate-950 border border-cyan-500/40 rounded-2xl p-3 text-center">
+                    <div class="text-[11px] sm:text-xs text-slate-400">ความแม่นยำ</div>
+                    <div id="summary-accuracy" class="font-mono-tech text-2xl sm:text-3xl font-extrabold text-cyan-400 mt-0.5">0%</div>
+                </div>
+            </div>
+
+            <!-- 10-Stage Breakdown List -->
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3.5 mb-5">
+                <div class="text-xs font-semibold text-slate-300 mb-2 flex items-center justify-between">
+                    <span>บันทึกผลรายข้อ (ข้อที่ 1 – 10)</span>
+                    <span class="text-[11px] text-slate-500">ระดับความยากเพิ่มขึ้นตามลำดับ</span>
+                </div>
+                <div id="summary-history-list" class="max-h-56 overflow-y-auto space-y-1.5 pr-1">
+                    <!-- Rendered via JS -->
+                </div>
+            </div>
+
+            <div class="flex justify-center">
+                <button onclick="restartTenStageCampaign()" class="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold text-base shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    เริ่มภารกิจ 10 ข้อรอบใหม่ (สุ่มโจทย์ใหม่ทั้งหมด)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. ระบบสุ่มโจทย์อสมการ ม.3 ไต่ระดับความยาก 10 ข้อ
+        // ==========================================
+        const WIRE_STYLES = [
+            { name: "สายแดง", main: "#ef4444", highlight: "#fca5a5", dark: "#991b1b" },
+            { name: "สายฟ้า", main: "#0ea5e9", highlight: "#bae6fd", dark: "#075985" },
+            { name: "สายเหลือง", main: "#f59e0b", highlight: "#fde68a", dark: "#92400e" },
+            { name: "สายเขียว", main: "#10b981", highlight: "#a7f3d0", dark: "#065f46" },
+            { name: "สายม่วง", main: "#a855f7", highlight: "#e9d5ff", dark: "#6b21a8" }
+        ];
+
+        const TOTAL_STAGES = 10;
+        let currentStage = 1; // ข้อที่ 1 ถึง 10
+        let stageHistory = []; // เก็บประวัติผลการเล่นทั้ง 10 ข้อ
+        let currentProblem = null;
+        let cutWires = new Set();
+        let lastCutWireIndex = null;
+        let timeRemainingMs = 90000;
+        let lastTickSecond = 90;
+        let timerLoop = null;
+        let isEnded = false;
+        let totalScore = 0;
+        let soundOn = true;
+        let audioContext = null;
+        let drawerOpen = true;
+
+        function randInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function shuffleArray(arr) {
+            const copy = [...arr];
+            for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+        }
+
+        // สร้างโจทย์ตามลำดับข้อที่ 1 - 10 โดยเพิ่มระดับความยากขึ้นเรื่อยๆ
+        // ข้อ 1-2: ระดับ 1 (ขั้นตอนเดียว: x + b <op> c)
+        // ข้อ 3-4: ระดับ 2 (สองขั้นตอน: ax + b <op> c)
+        // ข้อ 5-6: ระดับ 3 (ย้ายตัวแปรสองข้าง: ax + b <op> cx + d)
+        // ข้อ 7-8: ระดับ 4 (สัมประสิทธิ์หน้า x ติดลบ ต้องกลับเครื่องหมาย: -ax + b <op> c)
+        // ข้อ 9-10: ระดับ 5 (Boss Stage! มีวงเล็บและสัมประสิทธิ์ติดลบ: -a(x + b) + c <op> d)
+        function buildProblemForStage(stage) {
+            const ops = ['<', '≤', '>', '≥'];
+            const flipMap = { '<': '>', '≤': '≥', '>': '<', '≥': '≤' };
+            const op = ops[randInt(0, 3)];
+            const isStrict = (op === '<' || op === '>');
+
+            let tier = 1;
+            let tierName = "";
+            let text = '';
+            let boundary = 0;
+            let trueOp = op;
+            let steps = [];
+            let hint = '';
+            let timeLimitSec = 90;
+
+            if (stage <= 2) {
+                // TIER 1: ขั้นตอนเดียว (ข้อ 1-2)
+                tier = 1;
+                tierName = "ระดับ 1: อสมการขั้นตอนเดียว";
+                timeLimitSec = 90;
+                boundary = randInt(-3, 5);
+                const b = randInt(2, 8);
+                const isAdd = (stage === 1);
+                if (isAdd) {
+                    const c = boundary + b;
+                    text = `x + ${b} ${op} ${c}`;
+                    steps = [
+                        `1. โจทย์ตั้งต้น: x + ${b} ${op} ${c}`,
+                        `2. นำ ${b} ลบออกทั้งสองข้าง: x ${op} ${c} - ${b}`,
+                        `3. ช่วงคำตอบคือ: x ${op} ${boundary} (${isStrict ? 'จุดโปร่ง ไม่รวม ' + boundary : 'จุดทึบ รวม ' + boundary})`
+                    ];
+                    hint = `ย้าย +${b} ไปลบทางขวา จะได้ x ${op} ${c - b} และสังเกตเครื่องหมาย '${op}'`;
+                } else {
+                    const c = boundary - b;
+                    text = `x - ${b} ${op} ${c}`;
+                    steps = [
+                        `1. โจทย์ตั้งต้น: x - ${b} ${op} ${c}`,
+                        `2. นำ ${b} บวกทั้งสองข้าง: x ${op} ${c} + ${b}`,
+                        `3. ช่วงคำตอบคือ: x ${op} ${boundary} (${isStrict ? 'จุดโปร่ง ไม่รวม ' + boundary : 'จุดทึบ รวม ' + boundary})`
+                    ];
+                    hint = `ย้าย -${b} ไปบวกทางขวา จะได้ x ${op} ${c + b} และสังเกตเครื่องหมาย '${op}'`;
+                }
+            } else if (stage <= 4) {
+                // TIER 2: สองขั้นตอน (ข้อ 3-4)
+                tier = 2;
+                tierName = "ระดับ 2: อสมการสองขั้นตอน";
+                timeLimitSec = 85;
+                boundary = randInt(-3, 5);
+                const a = randInt(2, 4);
+                const b = randInt(1, 7);
+                const isAdd = (stage === 3);
+                if (isAdd) {
+                    const c = a * boundary + b;
+                    text = `${a}x + ${b} ${op} ${c}`;
+                    steps = [
+                        `1. โจทย์ตั้งต้น: ${a}x + ${b} ${op} ${c}`,
+                        `2. นำ ${b} ลบออกทั้งสองข้าง: ${a}x ${op} ${c - b}`,
+                        `3. หารด้วย ${a} ทั้งสองข้าง: x ${op} ${boundary}`
+                    ];
+                    hint = `ขั้นแรกย้าย +${b} ไปลบทางขวา จากนั้นหารด้วย ${a} ทั้งสองข้าง`;
+                } else {
+                    const c = a * boundary - b;
+                    text = `${a}x - ${b} ${op} ${c}`;
+                    steps = [
+                        `1. โจทย์ตั้งต้น: ${a}x - ${b} ${op} ${c}`,
+                        `2. นำ ${b} บวกทั้งสองข้าง: ${a}x ${op} ${c + b}`,
+                        `3. หารด้วย ${a} ทั้งสองข้าง: x ${op} ${boundary}`
+                    ];
+                    hint = `ขั้นแรกย้าย -${b} ไปบวกทางขวา จากนั้นหารด้วย ${a} ทั้งสองข้าง`;
+                }
+            } else if (stage <= 6) {
+                // TIER 3: ตัวแปรอยู่ทั้งสองข้าง (ข้อ 5-6)
+                tier = 3;
+                tierName = "ระดับ 3: จัดรูปตัวแปรสองข้าง";
+                timeLimitSec = 80;
+                boundary = randInt(-3, 4);
+                const cCoeff = randInt(2, 3);
+                const diffCoeff = randInt(2, 3);
+                const aCoeff = cCoeff + diffCoeff; // a > c เสมอในด่านนี้
+                const b = randInt(1, 6);
+                const d = (aCoeff - cCoeff) * boundary + b;
+
+                text = `${aCoeff}x + ${b} ${op} ${cCoeff}x + ${d}`;
+                steps = [
+                    `1. โจทย์ตั้งต้น: ${aCoeff}x + ${b} ${op} ${cCoeff}x + ${d}`,
+                    `2. ย้ายตัวแปรไปฝั่งซ้ายและค่าคงตัวไปฝั่งขวา: ${aCoeff}x - ${cCoeff}x ${op} ${d} - ${b}`,
+                    `3. รวมพจน์ที่คล้ายกัน: ${diffCoeff}x ${op} ${d - b}`,
+                    `4. หารด้วย ${diffCoeff} ทั้งสองข้าง: x ${op} ${boundary}`
+                ];
+                hint = `ย้าย ${cCoeff}x ไปลบฝั่งซ้าย และย้าย +${b} ไปลบฝั่งขวา จะเหลือ ${diffCoeff}x ${op} ${d - b}`;
+            } else if (stage <= 8) {
+                // TIER 4: สัมประสิทธิ์หน้า x ติดลบ ต้องกลับเครื่องหมาย! (ข้อ 7-8)
+                tier = 4;
+                tierName = "ระดับ 4: กับดักหารด้วยจำนวนลบ";
+                timeLimitSec = 80;
+                boundary = randInt(-3, 4);
+                const a = randInt(2, 4);
+                const b = randInt(1, 8);
+                const c = (-a) * boundary + b;
+                trueOp = flipMap[op];
+
+                text = `-${a}x + ${b} ${op} ${c}`;
+                steps = [
+                    `1. โจทย์ตั้งต้น: -${a}x + ${b} ${op} ${c}`,
+                    `2. นำ ${b} ลบออกทั้งสองข้าง: -${a}x ${op} ${c - b}`,
+                    `3. หารด้วย -${a} ทั้งสองข้าง (กลับเครื่องหมาย '${op}' เป็น '${trueOp}'!): x ${trueOp} ${boundary}`,
+                    `4. เงื่อนไขที่ถูกต้องคือ x ${trueOp} ${boundary}`
+                ];
+                hint = `ระวังกับดัก! เมื่อหารทั้งสองข้างด้วย -${a} ต้องกลับเครื่องหมาย '${op}' เป็น '${trueOp}'`;
+            } else {
+                // TIER 5: BOSS STAGE! มีวงเล็บแจกแจง + ติดลบ (ข้อ 9-10)
+                tier = 5;
+                tierName = "ระดับ 5 (BOSS): แจกแจงวงเล็บและจำนวนลบ";
+                timeLimitSec = 75;
+                boundary = randInt(-2, 4);
+                const a = randInt(2, 3);
+                const b = randInt(1, 3);
+                const c = (-a) * (boundary + b);
+                trueOp = flipMap[op];
+
+                text = `-${a}(x + ${b}) ${op} ${c}`;
+                steps = [
+                    `1. โจทย์ตั้งต้น: -${a}(x + ${b}) ${op} ${c}`,
+                    `2. คูณแจกแจง -${a} เข้าในวงเล็บ: -${a}x - ${a * b} ${op} ${c}`,
+                    `3. ย้าย -${a * b} ไปบวกฝั่งขวา: -${a}x ${op} ${c + a * b}`,
+                    `4. หารด้วย -${a} ทั้งสองข้าง (กลับเครื่องหมาย '${op}' เป็น '${trueOp}'): x ${trueOp} ${boundary}`
+                ];
+                hint = `คูณแจกแจง -${a} เข้าไปใน (x + ${b}) จะได้ -${a}x - ${a * b} แล้วอย่าลืมกลับเครื่องหมายเมื่อหารด้วย -${a}`;
+            }
+
+            const checkTruth = (x) => {
+                if (trueOp === '<') return x < boundary;
+                if (trueOp === '≤') return x <= boundary;
+                if (trueOp === '>') return x > boundary;
+                if (trueOp === '≥') return x >= boundary;
+                return false;
+            };
+
+            const candidates = new Set([boundary]);
+            candidates.add(boundary - randInt(1, 2));
+            candidates.add(boundary - randInt(3, 4));
+            candidates.add(boundary + randInt(1, 2));
+            candidates.add(boundary + randInt(3, 4));
+
+            let values = Array.from(candidates).map(v => Math.max(-8, Math.min(9, v)));
+            while (new Set(values).size < 5) {
+                const extra = randInt(-7, 8);
+                if (!values.includes(extra)) values.push(extra);
+            }
+            values = shuffleArray(Array.from(new Set(values)).slice(0, 5));
+
+            const wires = values.map((val, idx) => ({
+                index: idx,
+                value: val,
+                style: WIRE_STYLES[idx]
+            }));
+
+            return {
+                stage,
+                tier,
+                tierName,
+                text,
+                op,
+                trueOp,
+                boundary,
+                isStrict,
+                wires,
+                checkTruth,
+                steps,
+                hint,
+                timeLimitSec
+            };
+        }
+
+        // ==========================================
+        // 2. ระบบเสียง Web Audio API (ติ๊กต็อก, ตัดสาย, ระเบิด, สำเร็จ)
+        // ==========================================
+        function playTone(type) {
+            if (!soundOn) return;
+            try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                const now = audioContext.currentTime;
+
+                if (type === 'tick') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(980, now);
+                    gain.gain.setValueAtTime(0.05, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+                    osc.start(now);
+                    osc.stop(now + 0.035);
+                } else if (type === 'tick-fast') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(1320, now);
+                    gain.gain.setValueAtTime(0.09, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+                    osc.start(now);
+                    osc.stop(now + 0.04);
+                } else if (type === 'snip') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(920, now);
+                    osc.frequency.exponentialRampToValueAtTime(160, now + 0.08);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } else if (type === 'reconnect') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(340, now);
+                    osc.frequency.exponentialRampToValueAtTime(680, now + 0.09);
+                    gain.gain.setValueAtTime(0.14, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+                    osc.start(now);
+                    osc.stop(now + 0.09);
+                } else if (type === 'success') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.11);
+                    osc.frequency.setValueAtTime(783.99, now + 0.22);
+                    osc.frequency.setValueAtTime(1046.50, now + 0.33);
+                    gain.gain.setValueAtTime(0.22, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
+                    osc.start(now);
+                    osc.stop(now + 0.6);
+                } else if (type === 'boom') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.exponentialRampToValueAtTime(28, now + 0.65);
+                    gain.gain.setValueAtTime(0.4, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.65);
+                    osc.start(now);
+                    osc.stop(now + 0.65);
+                }
+            } catch (e) {
+                // Ignore audio block before user gesture
+            }
+        }
+
+        function toggleSound() {
+            soundOn = !soundOn;
+            document.getElementById('icon-sound-on').classList.toggle('hidden', !soundOn);
+            document.getElementById('icon-sound-off').classList.toggle('hidden', soundOn);
+        }
+
+        // ==========================================
+        // 3. การเริ่มต้นและจัดการภารกิจ 10 ข้อ
+        // ==========================================
+        function restartTenStageCampaign() {
+            closeModal();
+            document.getElementById('summary-modal').classList.add('hidden');
+            document.getElementById('summary-modal').classList.remove('flex');
+
+            currentStage = 1;
+            stageHistory = [];
+            totalScore = 0;
+            document.getElementById('score-display').textContent = '0';
+
+            loadCurrentStage();
+        }
+
+        function loadCurrentStage() {
+            currentProblem = buildProblemForStage(currentStage);
+            startProblemSession();
+        }
+
+        function renderStageProgressBar() {
+            document.getElementById('stage-counter-pill').textContent = `ข้อที่ ${currentStage} / ${TOTAL_STAGES}`;
+            document.getElementById('stage-tier-title').textContent = currentProblem.tierName;
+            document.getElementById('stage-progress-text').textContent = `สำเร็จแล้ว ${stageHistory.filter(h => h.success).length} / ${TOTAL_STAGES} ข้อ`;
+
+            const bar = document.getElementById('stage-dots-bar');
+            bar.innerHTML = '';
+
+            for (let i = 1; i <= TOTAL_STAGES; i++) {
+                const record = stageHistory.find(h => h.stage === i);
+                const seg = document.createElement('div');
+                seg.className = "h-2.5 rounded-full transition-all flex items-center justify-center";
+
+                if (record) {
+                    seg.className += record.success
+                        ? " bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)]"
+                        : " bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.7)]";
+                } else if (i === currentStage) {
+                    seg.className += " bg-cyan-400 animate-pulse ring-2 ring-cyan-300/50";
+                } else {
+                    seg.className += " bg-slate-800 border border-slate-700";
+                }
+                bar.appendChild(seg);
+            }
+        }
+
+        function resetCurrentBomb() {
+            if (isEnded) return;
+            cutWires.clear();
+            lastCutWireIndex = null;
+            playTone('reconnect');
+            renderSVGWires();
+            renderNumberLine();
+            updateCutCounter();
+        }
+
+        function startProblemSession() {
+            cutWires.clear();
+            lastCutWireIndex = null;
+            isEnded = false;
+            timeRemainingMs = currentProblem.timeLimitSec * 1000;
+            lastTickSecond = currentProblem.timeLimitSec;
+
+            // อัปเดต UI
+            document.getElementById('level-badge').textContent = `ข้อที่ ${currentStage}/${TOTAL_STAGES} (${currentProblem.tierName})`;
+            document.getElementById('inequality-display').textContent = currentProblem.text;
+            document.getElementById('bomb-status-text').textContent = "ARMED // ระบบจุดระเบิดกำลังทำงาน";
+            document.getElementById('bomb-status-text').className = "font-mono-tech text-xs sm:text-sm font-bold tracking-wider text-red-400";
+            document.getElementById('beacon-led').className = "w-4 h-4 rounded-full bg-red-500 beacon-active border border-red-200";
+            document.getElementById('beacon-led').style.setProperty('--beacon-speed', '1s');
+            document.getElementById('speed-indicator').textContent = "1.0x SPEED";
+            document.getElementById('hint-box').innerHTML = 'กดปุ่ม "ดูคำใบ้" หากต้องการคำแนะนำขั้นตอนการแก้อสมการ';
+            document.getElementById('hint-box').className = "text-xs text-slate-400 bg-slate-900/90 border border-slate-800 rounded-lg p-2 min-h-[48px] flex items-center";
+
+            renderStageProgressBar();
+            renderSVGWires();
+            renderNumberLine();
+            updateCutCounter();
+            startCountdown();
+        }
+
+        // ==========================================
+        // 4. วาดสายไฟ SVG โค้งสมจริง 5 เส้นพร้อมป้ายตัวเลขและประกายไฟ
+        // ==========================================
+        function renderSVGWires() {
+            const layer = document.getElementById('dynamic-wires-layer');
+            layer.innerHTML = '';
+
+            // พิกัด Y ของสายไฟทั้ง 5 เส้น
+            const yPositions = [52, 111, 170, 229, 288];
+
+            currentProblem.wires.forEach((wire, idx) => {
+                const y = yPositions[idx];
+                const isCut = cutWires.has(idx);
+                const justCut = (lastCutWireIndex === idx && isCut);
+
+                // เส้นโค้ง Bezier จากซ้าย (x=44) ไปขวา (x=456)
+                // แบ่งเป็น 2 ท่อน (ซ้ายถึงกลาง x=240 และกลาง x=260 ถึงขวา) เพื่อให้แยกท่อนตอนตัดได้สมจริง
+                const curveOffset = (idx - 2) * 10; // โค้งกระจายออกเล็กน้อยดูเป็นธรรมชาติ
+                const leftPath = `M 44 ${y} C 110 ${y + curveOffset}, 175 ${y - curveOffset}, 238 ${isCut ? y - 14 : y}`;
+                const rightPath = `M ${isCut ? 262 : 238} ${isCut ? y + 14 : y} C 325 ${y - curveOffset}, 390 ${y + curveOffset}, 456 ${y}`;
+
+                const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                g.setAttribute("class", "svg-wire-group");
+                g.onclick = () => toggleWireCut(idx);
+
+                // พื้นที่คลิกโปร่งใสขนาดใหญ่เพื่อให้แตะง่ายบนมือถือ
+                const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                hitArea.setAttribute("x", "40");
+                hitArea.setAttribute("y", y - 24);
+                hitArea.setAttribute("width", "420");
+                hitArea.setAttribute("height", "48");
+                hitArea.setAttribute("fill", "transparent");
+                g.appendChild(hitArea);
+
+                // ปลั๊กเสียบซ้าย-ขวา
+                g.innerHTML += `
+                    <rect x="38" y="${y - 8}" width="12" height="16" rx="3" fill="#475569" stroke="#0f172a" stroke-width="1.5"/>
+                    <rect x="450" y="${y - 8}" width="12" height="16" rx="3" fill="#475569" stroke="#0f172a" stroke-width="1.5"/>
+                `;
+
+                if (!isCut) {
+                    // สายไฟสภาพสมบูรณ์ (เส้นเดียวต่อเนื่อง + ไฮไลต์เงาสะท้อน)
+                    const fullPath = `M 44 ${y} C 140 ${y + curveOffset}, 360 ${y - curveOffset}, 456 ${y}`;
+                    g.innerHTML += `
+                        <path d="${fullPath}" fill="none" stroke="${wire.style.dark}" stroke-width="12" stroke-linecap="round" filter="url(#wireShadow)"/>
+                        <path d="${fullPath}" fill="none" stroke="${wire.style.main}" stroke-width="9" stroke-linecap="round"/>
+                        <path d="${fullPath}" fill="none" stroke="${wire.style.highlight}" stroke-width="2.5" stroke-linecap="round" opacity="0.65"/>
+                    `;
+                } else {
+                    // สายไฟถูกตัดขาดเป็น 2 ท่อน + เห็นไส้ทองแดงตรงปลายสาย
+                    g.innerHTML += `
+                        <!-- Left Cut Segment -->
+                        <path d="${leftPath}" fill="none" stroke="${wire.style.dark}" stroke-width="12" stroke-linecap="round" filter="url(#wireShadow)"/>
+                        <path d="${leftPath}" fill="none" stroke="${wire.style.main}" stroke-width="9" stroke-linecap="round"/>
+                        <circle cx="240" cy="${y - 14}" r="3.5" fill="#f59e0b" stroke="#78350f" stroke-width="1"/>
+
+                        <!-- Right Cut Segment -->
+                        <path d="${rightPath}" fill="none" stroke="${wire.style.dark}" stroke-width="12" stroke-linecap="round" filter="url(#wireShadow)"/>
+                        <path d="${rightPath}" fill="none" stroke="${wire.style.main}" stroke-width="9" stroke-linecap="round"/>
+                        <circle cx="260" cy="${y + 14}" r="3.5" fill="#f59e0b" stroke="#78350f" stroke-width="1"/>
+                    `;
+
+                    // ประกายไฟเล็กๆ (Spark Animation) ตรงรอยตัด
+                    if (justCut) {
+                        g.innerHTML += `
+                            <g class="spark-burst">
+                                <polygon points="250,${y-18} 254,${y-5} 267,${y-5} 256,${y+3} 260,${y+16} 250,${y+8} 240,${y+16} 244,${y+3} 233,${y-5} 246,${y-5}" fill="#fde047" stroke="#f97316" stroke-width="1.5"/>
+                            </g>
+                        `;
+                    }
+                }
+
+                // ป้ายแท็กตัวเลข (Number Tag) ติดบนสายไฟ
+                const tagX = isCut ? 132 : 250;
+                const tagY = isCut ? (y - 3) : y;
+                const tagBorder = isCut ? "#ef4444" : wire.style.main;
+                const tagBg = isCut ? "#450a0a" : "#0f172a";
+
+                g.innerHTML += `
+                    <g transform="translate(${tagX}, ${tagY})">
+                        <rect x="-42" y="-15" width="84" height="30" rx="8" fill="${tagBg}" stroke="${tagBorder}" stroke-width="2.2" filter="url(#wireShadow)"/>
+                        <text x="0" y="5" fill="#ffffff" font-family="JetBrains Mono" font-size="14" font-weight="800" text-anchor="middle">
+                            x = ${wire.value}
+                        </text>
+                    </g>
+                `;
+
+                // ป้ายสถานะ "CUT" ด้านขวาเมื่อถูกตัด
+                if (isCut) {
+                    g.innerHTML += `
+                        <g transform="translate(382, ${y + 3})">
+                            <rect x="-26" y="-11" width="52" height="22" rx="6" fill="#dc2626" stroke="#fca5a5" stroke-width="1"/>
+                            <text x="0" y="4" fill="#ffffff" font-family="Kanit" font-size="11" font-weight="bold" text-anchor="middle">ตัดแล้ว</text>
+                        </g>
+                    `;
+                }
+
+                layer.appendChild(g);
+            });
+        }
+
+        function toggleWireCut(index) {
+            if (isEnded) return;
+
+            if (cutWires.has(index)) {
+                cutWires.delete(index);
+                lastCutWireIndex = null;
+                playTone('reconnect');
+            } else {
+                cutWires.add(index);
+                lastCutWireIndex = index;
+                playTone('snip');
+            }
+
+            renderSVGWires();
+            renderNumberLine();
+            updateCutCounter();
+        }
+
+        function updateCutCounter() {
+            document.getElementById('cut-summary').textContent = `ตัดแล้ว ${cutWires.size} / 5 เส้น`;
+        }
+
+        // ==========================================
+        // 5. เส้นจำนวนจำลอง (Interactive Number Line)
+        // ==========================================
+        function renderNumberLine() {
+            const container = document.getElementById('number-line-container');
+            container.innerHTML = `
+                <div class="absolute left-3 right-3 top-1/2 h-0.5 bg-slate-600 -translate-y-1/2"></div>
+                <div class="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs">◀</div>
+                <div class="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs">▶</div>
+            `;
+
+            const cutValues = new Set(
+                Array.from(cutWires).map(idx => currentProblem.wires[idx].value)
+            );
+            const optionValues = new Set(currentProblem.wires.map(w => w.value));
+
+            for (let n = -8; n <= 9; n++) {
+                const isCut = cutValues.has(n);
+                const isOption = optionValues.has(n);
+
+                const item = document.createElement('div');
+                item.className = "relative z-10 flex flex-col items-center justify-center w-6";
+
+                let dot = `<div class="w-0.5 h-2.5 bg-slate-600"></div>`;
+                if (isCut) {
+                    dot = `<div class="w-4 h-4 rounded-full bg-red-500 border-2 border-white shadow-[0_0_10px_#ef4444] scale-110 transition-transform"></div>`;
+                } else if (isOption) {
+                    dot = `<div class="w-3 h-3 rounded-full bg-slate-900 border-2 border-cyan-400"></div>`;
+                }
+
+                const textStyle = isCut
+                    ? "text-red-400 font-extrabold"
+                    : (isOption ? "text-cyan-300 font-semibold" : "text-slate-500");
+
+                item.innerHTML = `
+                    <div class="h-5 flex items-center justify-center">${dot}</div>
+                    <span class="font-mono-tech text-[11px] mt-0.5 ${textStyle}">${n}</span>
+                `;
+                container.appendChild(item);
+            }
+        }
+
+        // ==========================================
+        // 6. ระบบนับถอยหลังความละเอียดสูง (01:30.00)
+        // ==========================================
+        function startCountdown() {
+            clearInterval(timerLoop);
+            let prevTimestamp = performance.now();
+
+            timerLoop = setInterval(() => {
+                if (isEnded) {
+                    clearInterval(timerLoop);
+                    return;
+                }
+
+                const now = performance.now();
+                const delta = now - prevTimestamp;
+                prevTimestamp = now;
+
+                timeRemainingMs -= delta;
+
+                if (timeRemainingMs <= 0) {
+                    timeRemainingMs = 0;
+                    updateClockUI();
+                    clearInterval(timerLoop);
+                    triggerExplosion("TIME_OUT");
+                    return;
+                }
+
+                updateClockUI();
+
+                // เสียงติ๊กต็อกทุก 1 วินาที (และถี่ขึ้นเมื่อเหลือต่ำกว่า 15 วินาที)
+                const currentSec = Math.ceil(timeRemainingMs / 1000);
+                if (currentSec < lastTickSecond) {
+                    lastTickSecond = currentSec;
+                    if (currentSec <= 15) {
+                        playTone('tick-fast');
+                        document.getElementById('beacon-led').style.setProperty('--beacon-speed', '0.3s');
+                        document.getElementById('speed-indicator').textContent = "CRITICAL!";
+                    } else {
+                        playTone('tick');
+                    }
+                }
+            }, 50);
+        }
+
+        function updateClockUI() {
+            const totalSec = Math.floor(timeRemainingMs / 1000);
+            const mins = Math.floor(totalSec / 60);
+            const secs = totalSec % 60;
+            const centis = Math.floor((timeRemainingMs % 1000) / 10);
+
+            document.getElementById('timer-main').textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            document.getElementById('timer-ms').textContent = `.${String(centis).padStart(2, '0')}`;
+        }
+
+        // ==========================================
+        // 7. การตรวจสอบคำตอบและวิเคราะห์ข้อผิดพลาดอัจฉริยะ
+        // ==========================================
+        function verifyDefusal() {
+            if (isEnded) return;
+            clearInterval(timerLoop);
+            isEnded = true;
+
+            const chosenValues = Array.from(cutWires).map(idx => currentProblem.wires[idx].value);
+            const correctWires = currentProblem.wires.filter(w => currentProblem.checkTruth(w.value));
+
+            const isSuccess =
+                chosenValues.length === correctWires.length &&
+                chosenValues.every(val => currentProblem.checkTruth(val));
+
+            if (isSuccess) {
+                playTone('success');
+                const secLeft = Math.ceil(timeRemainingMs / 1000);
+                const bonus = secLeft * 10;
+                const basePoints = currentProblem.tier * 200;
+                const earned = basePoints + bonus;
+                totalScore += earned;
+
+                stageHistory.push({
+                    stage: currentStage,
+                    tierName: currentProblem.tierName,
+                    inequality: currentProblem.text,
+                    answer: `x ${currentProblem.trueOp} ${currentProblem.boundary}`,
+                    success: true,
+                    earned,
+                    note: `โบนัสเวลา +${bonus}`
+                });
+
+                document.getElementById('score-display').textContent = totalScore;
+                document.getElementById('bomb-status-text').textContent = "DEFUSED // ปลดชนวนระเบิดสำเร็จ!";
+                document.getElementById('bomb-status-text').className = "font-mono-tech text-xs sm:text-sm font-bold tracking-wider text-emerald-400 glow-emerald";
+                document.getElementById('beacon-led').className = "w-4 h-4 rounded-full bg-emerald-400 border border-white";
+                renderStageProgressBar();
+
+                showResultModal({
+                    success: true,
+                    tag: `STAGE ${currentStage}/${TOTAL_STAGES} // ปลดชนวนสำเร็จ`,
+                    title: "กู้ระเบิดสำเร็จ! วงจรปลอดภัยแล้ว",
+                    diagnostic: `ยอดเยี่ยม! คุณตัดสายไฟ <strong>${chosenValues.sort((a,b)=>a-b).map(v => `x = ${v}`).join(', ')}</strong> ซึ่งตรงกับเงื่อนไข <strong>x ${currentProblem.trueOp} ${currentProblem.boundary}</strong> ทุกเส้น<br>คะแนนพื้นฐาน ${basePoints} + โบนัสเวลา ${bonus} = <strong>+${earned} คะแนน</strong>`,
+                    steps: currentProblem.steps
+                });
+            } else {
+                triggerExplosion("WRONG_WIRE", chosenValues);
+            }
+        }
+
+        function triggerExplosion(reason, chosenValues = []) {
+            isEnded = true;
+            playTone('boom');
+
+            // เอฟเฟกต์แสงวาบ + ตัวระเบิดสั่น
+            const flash = document.getElementById('explosion-screen');
+            flash.classList.remove('hidden', 'explosion-flash');
+            void flash.offsetWidth;
+            flash.classList.add('explosion-flash');
+            setTimeout(() => flash.classList.add('hidden'), 850);
+
+            const rig = document.getElementById('bomb-rig');
+            rig.classList.remove('explode-shake');
+            void rig.offsetWidth;
+            rig.classList.add('explode-shake');
+
+            document.getElementById('bomb-status-text').textContent = "DETONATED // ระเบิดทำงานแล้ว!";
+            document.getElementById('bomb-status-text').className = "font-mono-tech text-xs sm:text-sm font-bold tracking-wider text-red-500 glow-red";
+
+            stageHistory.push({
+                stage: currentStage,
+                tierName: currentProblem.tierName,
+                inequality: currentProblem.text,
+                answer: `x ${currentProblem.trueOp} ${currentProblem.boundary}`,
+                success: false,
+                earned: 0,
+                note: reason === "TIME_OUT" ? "หมดเวลา" : "ตัดสายผิดเงื่อนไข"
+            });
+            renderStageProgressBar();
+
+            let diagnosticText = "";
+            if (reason === "TIME_OUT") {
+                diagnosticText = `<strong>หมดเวลาปฏิบัติภารกิจ!</strong> ตัวนับถอยหลังถึง 00:00.00 ก่อนที่คุณจะกดปุ่มกู้ระเบิด<br>คำตอบที่ถูกต้องของอสมการนี้คือ <strong>x ${currentProblem.trueOp} ${currentProblem.boundary}</strong>`;
+            } else {
+                diagnosticText = analyzeMathMistake(chosenValues);
+            }
+
+            showResultModal({
+                success: false,
+                tag: `STAGE ${currentStage}/${TOTAL_STAGES} // ระเบิดทำงาน`,
+                title: reason === "TIME_OUT" ? "หมดเวลา! ระเบิดทำงาน" : "ตัดสายผิดเงื่อนไข! วงจรลัดวงจร",
+                diagnostic: diagnosticText,
+                steps: currentProblem.steps
+            });
+        }
+
+        // วิเคราะห์สาเหตุทางคณิตศาสตร์อย่างละเอียดตามรูปแบบความผิดพลาดจริงของนักเรียน ม.3
+        function analyzeMathMistake(chosenValues) {
+            const { op, trueOp, boundary, isStrict, tier, wires, checkTruth } = currentProblem;
+            const correctVals = wires.filter(w => checkTruth(w.value)).map(w => w.value).sort((a, b) => a - b);
+
+            if (chosenValues.length === 0) {
+                return `คุณยังไม่ได้ตัดสายไฟเลย! ต้องคลิกตัดสายไฟที่มีค่า x ทำให้อสมการเป็นจริง (คำตอบที่ต้องตัดคือ <strong>${correctVals.join(', ')}</strong>)`;
+            }
+
+            // 1. กรณีระดับ 4-5: ลืมกลับเครื่องหมายอสมการเมื่อหารด้วยจำนวนลบ
+            if (tier >= 4) {
+                const forgotFlipCheck = (x) => {
+                    if (op === '<') return x < boundary;
+                    if (op === '≤') return x <= boundary;
+                    if (op === '>') return x > boundary;
+                    if (op === '≥') return x >= boundary;
+                    return false;
+                };
+                const wrongSidePicked = chosenValues.some(v => v !== boundary && forgotFlipCheck(v));
+                if (wrongSidePicked) {
+                    return `⚠️ <strong>คุณลืมกลับเครื่องหมายอสมการเมื่อหารด้วยจำนวนลบ!</strong><br>โจทย์มีสัมประสิทธิ์หน้า x ติดลบ เมื่อหารทั้งสองข้างด้วยจำนวนลบ เครื่องหมาย <strong>'${op}'</strong> ต้องเปลี่ยนทิศเป็น <strong>'${trueOp}'</strong> (ได้ <strong>x ${trueOp} ${boundary}</strong>) แต่คุณเลือกตัดสายไฟฝั่งตรงข้าม`;
+                }
+            }
+
+            // 2. กรณีสับสนเครื่องหมายจุดโปร่ง (<, >) กับจุดทึบ (≤, ≥)
+            if (isStrict && chosenValues.includes(boundary)) {
+                return `⚠️ <strong>กับดักค่าขอบเขต (จุดโปร่ง)!</strong><br>คุณตัดสาย <strong>x = ${boundary}</strong> ซึ่งทำให้ทั้งสองข้างของอสมการเท่ากันพอดี แต่โจทย์ใช้เครื่องหมาย <strong>'${op}'</strong> (จุดโปร่ง ไม่นับรวมค่าขอบเขต ${boundary})`;
+            }
+            if (!isStrict && !chosenValues.includes(boundary)) {
+                return `⚠️ <strong>ลืมตัดสายค่าขอบเขต (จุดทึบ)!</strong><br>โจทย์ใช้เครื่องหมาย <strong>'${op}'</strong> ซึ่งแปลว่า "หรือเท่ากับ" ดังนั้นต้องนับรวมค่าขอบเขต <strong>x = ${boundary}</strong> ด้วย`;
+            }
+
+            // 3. กรณีเลือกค่าผิดฝั่งทั่วไป
+            const wrongVal = chosenValues.find(v => !checkTruth(v));
+            if (wrongVal !== undefined) {
+                return `คุณตัดสาย <strong>x = ${wrongVal}</strong> ซึ่งเมื่อแทนค่าในอสมการแล้วไม่เป็นจริง (เงื่อนไขที่ถูกต้องคือ <strong>x ${trueOp} ${boundary}</strong> ต้องตัดเฉพาะสาย <strong>${correctVals.join(', ')}</strong>)`;
+            }
+
+            // 4. กรณีตัดถูกบางเส้นแต่ยังตัดไม่ครบทุกเส้นที่เป็นจริง
+            return `คุณเลือกตัดสายไฟที่เป็นคำตอบยังไม่ครบทุกเส้น! สำหรับเงื่อนไข <strong>x ${trueOp} ${boundary}</strong> ต้องตัดสายไฟ <strong>${correctVals.join(', ')}</strong> ให้ครบทั้งหมด`;
+        }
+
+        // ==========================================
+        // 8. การควบคุม Modal และสรุปผลรวม 10 ข้อ
+        // ==========================================
+        function showResultModal({ success, tag, title, diagnostic, steps }) {
+            const modal = document.getElementById('result-modal');
+            const card = document.getElementById('modal-card');
+            const icon = document.getElementById('modal-icon');
+            const tagEl = document.getElementById('modal-tag');
+            const titleEl = document.getElementById('modal-title');
+            const diagEl = document.getElementById('modal-diagnostic');
+            const stepsEl = document.getElementById('modal-steps');
+            const nextLabel = document.getElementById('modal-next-label');
+
+            if (success) {
+                card.className = "w-full max-w-lg rounded-3xl bg-slate-900 border-2 border-emerald-500/70 p-5 sm:p-6 shadow-2xl";
+                icon.className = "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40";
+                icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+                tagEl.className = "text-xs font-mono-tech font-bold uppercase tracking-wider text-emerald-400";
+                diagEl.className = "rounded-2xl p-4 mb-4 text-sm leading-relaxed border bg-emerald-950/35 border-emerald-500/35 text-emerald-100";
+            } else {
+                card.className = "w-full max-w-lg rounded-3xl bg-slate-900 border-2 border-red-500/70 p-5 sm:p-6 shadow-2xl";
+                icon.className = "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-red-500/20 text-red-400 border border-red-500/40";
+                icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`;
+                tagEl.className = "text-xs font-mono-tech font-bold uppercase tracking-wider text-red-400";
+                diagEl.className = "rounded-2xl p-4 mb-4 text-sm leading-relaxed border bg-red-950/40 border-red-500/40 text-red-100";
+            }
+
+            tagEl.textContent = tag;
+            titleEl.textContent = title;
+            diagEl.innerHTML = diagnostic;
+            stepsEl.innerHTML = steps.map(s => `<div>${s}</div>`).join('');
+
+            if (currentStage < TOTAL_STAGES) {
+                nextLabel.textContent = `ไปยังข้อถัดไป (ข้อที่ ${currentStage + 1}/${TOTAL_STAGES})`;
+            } else {
+                nextLabel.textContent = `ดูผลคะแนนรวมทั้ง 10 ข้อ`;
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('result-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function proceedToNextStage() {
+            closeModal();
+            if (currentStage < TOTAL_STAGES) {
+                currentStage++;
+                loadCurrentStage();
+            } else {
+                showFinalSummaryModal();
+            }
+        }
+
+        function showFinalSummaryModal() {
+            const defusedCount = stageHistory.filter(h => h.success).length;
+            const accuracy = Math.round((defusedCount / TOTAL_STAGES) * 100);
+
+            document.getElementById('summary-total-score').textContent = totalScore.toLocaleString();
+            document.getElementById('summary-defused-count').textContent = `${defusedCount} / ${TOTAL_STAGES}`;
+            document.getElementById('summary-accuracy').textContent = `${accuracy}%`;
+
+            // จัดอันดับยศตามความแม่นยำ
+            let rankTitle = "";
+            let rankSubtitle = "";
+            if (defusedCount === 10) {
+                rankTitle = "🏆 ระดับตำนาน! ปรมาจารย์กู้ระเบิดอสมการ";
+                rankSubtitle = "ปลดชนวนสำเร็จครบ 100% ทั้ง 5 ระดับความยากโดยไม่พลาดเลยแม้แต่ข้อเดียว!";
+            } else if (defusedCount >= 8) {
+                rankTitle = "🥇 ยอดเยี่ยม! เจ้าหน้าที่กู้ระเบิดระดับหัวกะทิ";
+                rankSubtitle = "คุณแก้อสมการเชิงเส้นตัวแปรเดียวและรับมือกับดักเครื่องหมายได้อย่างแม่นยำ";
+            } else if (defusedCount >= 5) {
+                rankTitle = "🥈 ผ่านเกณฑ์! เจ้าหน้าที่ปฏิบัติการภาคสนาม";
+                rankSubtitle = "ทำได้ดี ลองทบทวนจุดที่พลาดในด่านระดับสูงเพื่อทำคะแนนให้ดียิ่งขึ้น";
+            } else {
+                rankTitle = "🥉 ต้องฝึกฝนเพิ่ม! นักเรียนฝึกหัดหน่วยกู้ระเบิด";
+                rankSubtitle = "อย่าเพิ่งท้อ ลองใช้เส้นจำนวนจำลองและสังเกตเครื่องหมายลบก่อนตัดสายไฟนะ!";
+            }
+
+            document.getElementById('summary-rank-title').textContent = rankTitle;
+            document.getElementById('summary-rank-subtitle').textContent = rankSubtitle;
+
+            // แสดงรายการสรุปทั้ง 10 ข้อ
+            const listEl = document.getElementById('summary-history-list');
+            listEl.innerHTML = stageHistory.map(item => `
+                <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl border ${item.success ? 'bg-emerald-950/25 border-emerald-500/30' : 'bg-red-950/25 border-red-500/30'}">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-mono-tech font-bold shrink-0 ${item.success ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}">
+                            ${item.stage}
+                        </span>
+                        <div class="truncate">
+                            <div class="font-mono-tech text-xs sm:text-sm font-bold text-white truncate">${item.inequality}</div>
+                            <div class="text-[11px] text-slate-400">เฉลย: <span class="font-mono-tech text-cyan-300">${item.answer}</span> • ${item.note}</div>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <div class="text-xs font-bold ${item.success ? 'text-emerald-400' : 'text-red-400'}">
+                            ${item.success ? 'สำเร็จ' : 'พลาด'}
+                        </div>
+                        <div class="font-mono-tech text-xs text-amber-400">+${item.earned}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            const summaryModal = document.getElementById('summary-modal');
+            summaryModal.classList.remove('hidden');
+            summaryModal.classList.add('flex');
+        }
+
+        function showHint() {
+            const box = document.getElementById('hint-box');
+            box.innerHTML = `<span class="text-cyan-200">${currentProblem.hint}</span>`;
+            box.className = "text-xs bg-cyan-950/40 border border-cyan-500/40 rounded-lg p-2 min-h-[48px] flex items-center";
+        }
+
+        function toggleHelperDrawer() {
+            drawerOpen = !drawerOpen;
+            const body = document.getElementById('helper-drawer-body');
+            const chevron = document.getElementById('drawer-chevron');
+            const label = document.getElementById('drawer-toggle-text');
+
+            if (drawerOpen) {
+                body.classList.remove('hidden');
+                chevron.classList.add('rotate-180');
+                label.textContent = "ซ่อนเครื่องมือ";
+            } else {
+                body.classList.add('hidden');
+                chevron.classList.remove('rotate-180');
+                label.textContent = "เปิดเครื่องมือช่วยคิด";
+            }
+        }
+
+        window.onload = function() {
+            restartTenStageCampaign();
+        };
+    </script>
+</body>
+</html>
